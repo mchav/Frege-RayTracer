@@ -254,12 +254,17 @@ reflected_ray depth (normal, hitpoint,(_,in_ray_dir),(color,kr,_))
 -- Image output: We can write a ppm (Portable Pixmap) file by converting a list of
 -- colors (length is width * height) into a big string
 make_pgm :: Int -> Int -> [ Color ] -> String
-make_pgm width height xs = "P3\n" ++ show width ++ " " ++ show height ++ "\n255\n" ++ stringify(xs)
-      where stringify [] = ""
-            stringify ((r,g,b):xs) = show (round (r*255)) ++ " " 
-                                  ++ show (round (g*255)) ++ " " 
-                                  ++ show (round (b*255)) ++ " " 
-                                  ++ stringify xs
+make_pgm width height xs = "P3\n" ++ show width ++ " " ++ show height ++ "\n255\n" ++ ( ST.run (stringify xs) )
+
+
+format (r, g, b) = show (round (r*255)) ++ " " ++ show (round (g*255)) ++ " " ++ show (round (b*255)) ++ " "
+
+stringify [] = return ""
+stringify ((r,g,b):xs) = do
+						sb <- StringBuilder.new ""
+						mapM_ (\t -> sb.append (format t)) xs
+						sb.toString
+
 
 ---------------------------------------------------------------------------------------
 -- Viewing screen and camera functions:  We define the camera position and the point which
@@ -320,13 +325,5 @@ render_to_pgm width height = let view = ( (0,0,-100), 100, (0,0,100), (0,-1,0))
                                  color_collection = map (raytrace 0) ray_collection
                              in make_pgm (round width).int (round height).int color_collection
 
-
-writeStringToFile :: String -> String -> IO ()
-writeStringToFile path line = do
-                              writer   <- openWriter path -- (1)
-                              writer.print line -- (2)
-                              writer.flush -- (3)
-
 main :: IO ()
 main = writeFile "test.ppm" (render_to_pgm 500 500)
-

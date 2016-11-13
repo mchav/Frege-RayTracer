@@ -8,40 +8,41 @@ import Prelude.Math
 -- NB: We have a right handed coordinate system.  If x increases to your right, and Y increases downwards then
 -- you are looking in the direction of increasing Z.
 
-type Vector3 = (Double, Double, Double)
+-- type Vector3 = (Double, Double, Double)
+data Vector3 = Vec3 { !x, !y, !z :: Double }
 
 truncate :: Double -> Int
 truncate n = let n' = round n
              in if ( n'.double > n ) then (n' - 1).int else (n').int
 
 add :: Vector3 -> Vector3 -> Vector3
-add (x,y,z) (a,b,c) = (a+x, b+y, c+z)
+add v1 v2 = Vec3 { x = v1.x + v2.x, y = v1.y + v2.y, z = v1.z + v2.z }
 
 sub :: Vector3 -> Vector3 -> Vector3
-sub (a,b,c) (x,y,z) = (a-x, b-y, c-z)
+sub v1 v2 = Vec3 { x = v1.x - v2.x, y = v1.y - v2.y, z = v1.z - v2.z }
 
 squared_mag :: Vector3 -> Double
-squared_mag (x,y,z) = (x*x + y*y + z*z)
+squared_mag v = v.x * v.x + v.y * v.y + v.z * v.z
 
 mag :: Vector3 -> Double
 mag v = sqrt (squared_mag v)
 
 scalarmult :: Vector3 -> Double -> Vector3
-scalarmult (x,y,z) c = (x*c, y*c, z*c)
+scalarmult v c = Vec3 { x = v.x * c, y = v.y * c, z = v.z * c }
 
 dot :: Vector3 -> Vector3 -> Double
-dot (x,y,z) (a,b,c) = x*a + b*y + c*z
+dot v1 v2 = v1.x * v2.x + v2.y * v1.y + v2.z * v1.z
 
 cross :: Vector3 -> Vector3 -> Vector3
-cross (a,b,c) (x,y,z) = (b*z + c*y, -(a*z + c*x), a*y + b*x)
+cross v1 v2 = Vec3 {x = v1.y * v2.z + v1.z * v2.y, y = - (v1.x * v2.z + v1.z * v2.x ), z = v1.x * v2.y + v1.y * v2.x}
 
 normalize :: Vector3 -> Vector3
 normalize v
   | (mag v) /= 0 = scalarmult v (1 / mag v) 
-  | otherwise    = (0,0,0)
+  | otherwise    = Vec3 {x = 0, y = 0, z = 0}
 
 neg :: Vector3 -> Vector3
-neg (x,y,z) = (-x,-y,-z)
+neg v = Vec3 { x = -v.x , y = -v.y, z = -v.z }
 
 -------------------------------------------------
 -- 3d Ray: Used as a semi-infinite 3d line.
@@ -49,10 +50,10 @@ neg (x,y,z) = (-x,-y,-z)
 type Point3 = Vector3
 type Direction3 = Vector3
 type Time = Double
-type Ray = (Point3, Direction3) -- base and direction
+data Ray = Ray { !base :: Point3, !dir :: Direction3 } -- base and direction
 
 position_at_time :: Ray -> Time -> Point3
-position_at_time (base, dir) t = base `add` (scalarmult dir t)
+position_at_time ray t = ray.base `add` (scalarmult ray.dir t)
 
 -------------------------------------------------
 -- Generic maths functions
@@ -72,46 +73,46 @@ xor False b = b
 -- Color model:  We store red, green and blue values as Doubles between 0.0 and 1.0
 --               However, the bounds are not enforced in any way, except by calling clamp
 
-type Color = (Double, Double, Double)
+data Color = Color { !r, !g, !b :: Double }
 
 -- Predefined colors for convience
 red, green, blue, white, black, midgrey, nearlywhite :: Color
-red     = (1.0, 0.0, 0.0)
-green   = (0.0, 1.0, 0.0)
-blue    = (0.0, 0.0, 1.0)
-white   = (1.0, 1.0, 1.0)
-black   = (0.0, 0.0, 0.0)
-midgrey = (0.5, 0.5, 0.5)
-nearlywhite = (0.8,0.8,0.8)
+red     = Color { r = 1.0, g = 0.0, b = 0.0 }
+green   = Color { r = 0.0, g = 1.0, b = 0.0 }
+blue    = Color { r = 0.0, g = 0.0, b = 1.0 }
+white   = Color { r = 1.0, g = 1.0, b = 1.0 }
+black   = Color { r = 0.0, g = 0.0, b = 0.0 }
+midgrey = Color { r = 0.5, g = 0.5, b = 0.5 }
+nearlywhite = Color { r = 0.8, g = 0.8, b = 0.8 }
 
 scale_col :: Color -> Double -> Color
-scale_col (r,g,b) k = (r*k, g*k, b*k)
+scale_col c k = Color { r = c.r * k, g = c.g * k, b = c.b * k }
 
 add_col :: Color -> Color -> Color
-add_col (r1,g1,b1) (r2,g2,b2) = (r1+r2, g1+g2, b1+b2)
+add_col c1 c2 = Color { r = c1.r + c2.r, g = c1.g + c2.g, b = c1.b + c2.b }
 
 clamp :: Color -> Color
-clamp (r,g,b) = ( clampDouble r, clampDouble g, clampDouble b)
+clamp c = Color { r = clampDouble c.r, g = clampDouble c.g, b = clampDouble c.b }
                 where clampDouble f = (max 0.0 (min 1.0 f))
 
 combine_col :: Color -> Color -> Color
-combine_col (r1,g1,b1) (r2,g2,b2) = (r1*r2, g1*g2, b1*b2)
+combine_col c1 c2 = Color { r = c1.r * c2.r, g = c1.g * c2.g, b = c1.b * c2.b }
 
 ---------------------------------------------------------------------------------------
 -- Procedural textures:  Various predefined 3d texture functions
 
 flatred, shinyred, semishinygreen, shinywhite :: Point3 -> Material
-flatred _ = (red, 0.0, 1.0)
-shinyred _ = (red, 0.3, 0.9)
-semishinygreen _ = (green, 0.5, 0.7)
-shinywhite _ = (white, 0.3, 0.9)
+flatred _ = Material { col = red, ref = 0.0, diff = 1.0 }
+shinyred _ = Material { col = red, ref = 0.3, diff = 0.9 }
+semishinygreen _ = Material { col = green, ref = 0.5, diff = 0.7 }
+shinywhite _ = Material { col = white, ref = 0.3, diff = 0.9 }
 
 -- alternate 20x20x20 black and white cubes
 checked_matt :: Point3 -> Material
-checked_matt (x,y,z) = let xeven = even (truncate (x / 20.0))
-                           yeven = even (truncate (y / 20.0))
-                           zeven = even (truncate (z / 20.0)) 
-                       in if ((xeven `xor` yeven) `xor` zeven) then (white, 0.0, 1.0) else (black, 0.0, 1.0)
+checked_matt p = let xeven = even (truncate (p.x / 20.0))
+                     yeven = even (truncate (p.y / 20.0))
+                     zeven = even (truncate (p.z / 20.0))
+                 in if ((xeven `xor` yeven) `xor` zeven) then Material { col = white, ref = 0.0, diff = 1.0 } else Material { col = black, ref = 0.0, diff = 1.0 }
 
 
 ---------------------------------------------------------------------------------------
@@ -120,7 +121,7 @@ checked_matt (x,y,z) = let xeven = even (truncate (x / 20.0))
 
 type Reflectivity = Double
 type Diffuseness = Double
-type Material = (Color, Reflectivity, Diffuseness)
+data Material = Material { col :: Color, ref :: Reflectivity, diff ::Diffuseness }
 
 
 ---------------------------------------------------------------------------------------
@@ -146,7 +147,7 @@ data Shape = Sphere Point3 Radius (Point3 -> Material)
 
 -- These intersection equations are taken from www.education.siggraph.org/materials/HyperGraph
 
-type Intersection = (Normal, Point3, Ray, Material) 
+data Intersection = Intersection { norm :: Normal, pt :: Point3, ray :: Ray, mat :: Material }
 
 -- When we calculate reflected rays, they start on the surface of the shape.  Unfortunately,
 -- our limited numerical precision can make them be under the surface and so the reflected
@@ -157,21 +158,21 @@ epsilon = 0.001
 
 
 intersect :: Ray -> Shape -> [(Time, Intersection)]
-intersect (base, dir) shape = case shape of
-                                        (Sphere center rad materialfn) -> let a = squared_mag dir
-                                                                              b = 2 * ( dir `dot` (base `sub` center))
-                                                                              c = (squared_mag (base `sub` center)) - rad^2
-                                                                              times = filter (> epsilon) (roots a b c)
-                                                                              normal_at_time t = normalize ((position_at_time (base, dir) t) `sub` center)
-                                                                              intersection_at_time t = (normal_at_time t, position_at_time (base, dir) t, (base, dir), materialfn (position_at_time (base, dir) t))
-                                                                          in map (\t -> (t,intersection_at_time t)) times
-                                        (Plane normal d materialfn2) = let vd = (normalize normal) `dot` dir
-                                                                           v0 = negate (((normalize normal) `dot` base) + d)
-                                                                       in if (vd == 0) then []
-                                                                          else let t = v0 / vd
-                                                                                   hitpoint = position_at_time (base, dir) t
-                                                                               in if t > epsilon then [ (t, (if (vd > 0) then (neg normal) else normal, hitpoint, (base, dir), materialfn2 hitpoint)) ]
-                                                                                  else []
+intersect ray shape = case shape of
+                            (Sphere center rad materialfn) -> let a = squared_mag ray.dir
+                                                                  b = 2 * ( ray.dir `dot` (ray.base `sub` center))
+                                                                  c = (squared_mag (ray.base `sub` center)) - rad^2
+                                                                  times = filter (> epsilon) (roots a b c)
+                                                                  normal_at_time t = normalize ((position_at_time ray t) `sub` center)
+                                                                  intersection_at_time t = Intersection { norm = normal_at_time t, pt = position_at_time ray t, ray = ray, mat = materialfn (position_at_time ray t) }
+                                                              in map (\t -> (t,intersection_at_time t)) times
+                            (Plane normal d materialfn2) = let vd = (normalize normal) `dot` ray.dir
+                                                               v0 = negate (((normalize normal) `dot` ray.base) + d)
+                                                           in if (vd == 0) then []
+                                                              else let t = v0 / vd
+                                                                       hitpoint = position_at_time ray t
+                                                                   in if t > epsilon then [ (t, Intersection { norm = if (vd > 0) then (neg normal) else normal, pt = hitpoint, ray = ray, mat = materialfn2 hitpoint } ) ]
+                                                                      else []
 
 -- Extract the closest intersection (lowest time) from a list
 closest :: [ (Time,Intersection) ] -> Intersection
@@ -188,23 +189,23 @@ data Light = Directional Vector3 Color
 
 -- If a  ray doesn't hit an object, what color should we use?
 background_color :: Color
-background_color = black
+background_color = blue
 
 -- What lights are in our scene?
 
 lights :: [Light]
-lights = [ Spotlight (100,-30,0) nearlywhite, 
-     Spotlight (-100,-100,150) nearlywhite ]
+lights = [ Spotlight ( Vec3 { x = 100, y = -30, z = 0 } ) nearlywhite,
+     Spotlight ( Vec3 { x = -100, y = -100, z = 150 } ) nearlywhite ]
 
 -- What is the ambient lighting in the scene
 ambient_light :: Color
-ambient_light = (0.1,0.1,0.1)
+ambient_light = Color { r = 0.1, g = 0.1, b = 0.1 }
 
 -- What Shapes are in our scene?
 shapes :: [Shape]
-shapes = [ Plane (normalize (0,(-1),0)) 50 shinyred,
-     Sphere (50,10,100) 40 semishinygreen,
-     Sphere (-80,0,80) 50 checked_matt]
+shapes = [ Plane (normalize ( Vec3 { x = 0, y = (-1), z = 0 } ) ) 50 shinyred,
+     Sphere ( Vec3 { x = 50, y = 10, z = 100 } ) 40 semishinygreen,
+     Sphere ( Vec3 { x = -80, y = 0, z = 80 } ) 50 checked_matt ]
 
 ---------------------------------------------------------------------------------------
 -- Local lighting model
@@ -213,7 +214,7 @@ shapes = [ Plane (normalize (0,(-1),0)) 50 shinyred,
 point_is_lit :: Point3 -> Point3 -> Bool
 point_is_lit point lightpos = let path = lightpos `sub` point
                                   time_at_light = mag path
-                                  ray = (point, normalize path)
+                                  ray = Ray { base = point , dir = normalize path }
                                   hits = concat (map (intersect ray) shapes)
                                   times = fst (unzip hits)
                               in if (null times) then True else (minimum times) > time_at_light
@@ -225,16 +226,16 @@ diffuse_coeff light_dir normal = max 0.0 (negate ((normalize light_dir) `dot` (n
 
 local_light :: Intersection -> Light -> Color
 -- Simple case of a non-shadowable directional light
-local_light (normal,_,_,(materialcol,_,kd)) (Directional dir lightcol) = 
-   let mixed_color = combine_col materialcol lightcol
-       diffuse = scale_col mixed_color ((diffuse_coeff dir normal) * kd)
-   in diffuse
-
 -- Spotlight - shadowable
-local_light (normal, hitpoint,_,(materialcol,_,kd)) (Spotlight lightpos lightcol) = 
-   let mixed_color = combine_col materialcol lightcol
-       diffuse = scale_col mixed_color (kd * (diffuse_coeff (hitpoint `sub` lightpos) normal))
-   in if (point_is_lit hitpoint lightpos) then diffuse else black
+local_light i s = case s of
+                      (Directional dir lightcol)     -> let
+                                                            mixed_color = (combine_col i.mat.col lightcol)
+                                                            diffuse = scale_col mixed_color ((diffuse_coeff dir i.norm) * i.mat.diff)
+                                                        in diffuse
+                      (Spotlight lightpos lightcol)  -> let
+                                                            mixed_color = combine_col i.mat.col lightcol
+                                                            diffuse = scale_col mixed_color (i.mat.diff * (diffuse_coeff (i.pt `sub` lightpos) i.norm))
+                                                        in if (point_is_lit i.pt lightpos) then diffuse else black
 
 
 ---------------------------------------------------------------------------------------
@@ -243,12 +244,13 @@ local_light (normal, hitpoint,_,(materialcol,_,kd)) (Spotlight lightpos lightcol
 -- Ray trace the outgoing reflected ray from an intersection (depth is the level of recursion
 -- which we're at in the ray tracing)
 reflected_ray :: Integer -> Intersection -> Color
-reflected_ray depth (normal, hitpoint,(_,in_ray_dir),(color,kr,_)) 
-   | kr == 0.0 = black
-   | otherwise = let k = 2 * ((normalize normal) `dot` (normalize (neg in_ray_dir)))
-                     out_ray_dir = (scalarmult (normalize normal) k) `sub` (neg in_ray_dir)
-                     reflected_col = raytrace (depth + 1) (hitpoint, out_ray_dir)
-                 in scalarmult reflected_col kr
+reflected_ray depth i
+   | i.mat.diff == 0.0 = black
+   | otherwise = let k = 2 * ((normalize i.norm) `dot` (normalize (neg i.ray.dir)))
+                     out_ray_dir = (scalarmult (normalize i.norm) k) `sub` (neg i.ray.dir)
+                     reflected_col = raytrace (depth + 1) (Ray { base = i.pt, dir = out_ray_dir } )
+                     ret = scalarmult ( Vec3 { x = reflected_col.r, y = reflected_col.g, z = reflected_col.b } ) i.mat.diff
+                 in Color { r = ret.x, g = ret.y, b = ret.z}
 
 ---------------------------------------------------------------------------------------
 -- Image output: We can write a ppm (Portable Pixmap) file by converting a list of
@@ -257,13 +259,14 @@ make_pgm :: Int -> Int -> [ Color ] -> String
 make_pgm width height xs = "P3\n" ++ show width ++ " " ++ show height ++ "\n255\n" ++ ( ST.run (stringify xs) )
 
 
-format (r, g, b) = show (round (r*255)) ++ " " ++ show (round (g*255)) ++ " " ++ show (round (b*255)) ++ " "
+format :: Color -> String
+format c = show (round (c.r*255)) ++ " " ++ show (round (c.g * 255)) ++ " " ++ show (round (c.b*255)) ++ " "
 
 stringify [] = return ""
-stringify ((r,g,b):xs) = do
-						sb <- StringBuilder.new ""
-						mapM_ (\t -> sb.append (format t)) xs
-						sb.toString
+stringify xs = do
+               sb <- StringBuilder.new ""
+               mapM_ (\t -> sb.append (format t)) xs
+               sb.toString
 
 
 ---------------------------------------------------------------------------------------
@@ -274,26 +277,26 @@ stringify ((r,g,b):xs) = do
 -- pixels on our virtual screen.
 
 -- Camera position, distance to screen, "Looking at" position, up vector
-type View = (Point3, Double, Point3, Vector3) 
+data View = View { camerapos :: Point3, viewdist :: Double, lookingat :: Point3, viewup :: Vector3 }
 
 pixel_grid :: View -> Double -> Double -> [ Point3 ]
-pixel_grid (camerapos, viewdist, lookingat, viewup) width height = 
-   let grid = [ (x.double, y.double, 0.double) | y <- [0..((round width) - 1).int], x <- [0..((round height) - 1).int] ]
-       centering_offset = (- width / 2.0, -height / 2.0 , 0)
+pixel_grid view width height =
+   let grid = [ Vec3 { x = x.double, y = y.double, z = 0.double } | y <- [0..((round width) - 1).int], x <- [0..((round height) - 1).int] ]
+       centering_offset = Vec3 { x = - width / 2.0, y = - height / 2.0 , z = 0 }
        pixel_offsets = map (add centering_offset) grid
-       viewdir = normalize (lookingat `sub` camerapos)
-       screen_center = camerapos `add` (scalarmult viewdir viewdist)
-       viewright = viewdir `cross` viewup
-       transform (x,y,_) = ( screen_center `add` (scalarmult viewright x) ) `add` (scalarmult (neg viewup) y) 
+       viewdir = normalize (view.lookingat `sub` view.camerapos)
+       screen_center = view.camerapos `add` (scalarmult viewdir view.viewdist)
+       viewright = viewdir `cross` view.viewup
+       transform p = ( screen_center `add` (scalarmult viewright p.x) ) `add` (scalarmult (neg view.viewup) p.y) 
    in map transform pixel_offsets
 
 -- Parallel projection function which creates rays parallel to the viewing screen
 parallel_projection :: View -> Point3 -> Ray
-parallel_projection (camerapos,_,lookingat,_) point  = (point, normalize (lookingat `sub` camerapos))
+parallel_projection view point  = Ray { base = point, dir = normalize (view.lookingat `sub` view.camerapos) }
 
 -- Perspective projection which creates rays through (0,0,-distance) through the point
 perspective_projection :: View -> Point3 -> Ray
-perspective_projection (camerapos,_,_,_) point = (point, normalize (point `sub` camerapos))
+perspective_projection view point = Ray { base = point, dir = normalize (point `sub` view.camerapos) }
 
 ---------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------
@@ -318,8 +321,9 @@ raytrace depth ray = let hits = concat (map (intersect ray) shapes)
                         else overall_lighting depth (closest hits)
 
 
+-- type View = View { camerapos :: Point3, viewdist :: Double, lookingat :: Point3, viewup :: Vector3 }
 render_to_pgm :: Double -> Double -> String
-render_to_pgm width height = let view = ( (0,0,-100), 100, (0,0,100), (0,-1,0))
+render_to_pgm width height = let view = ( View { camerapos = Vec3 { x = 0, y = 0, z = -100 }, viewdist = 100, lookingat =  Vec3 { x = 0, y = 0, z = 100 }, viewup = Vec3 { x = 0, y = -1, z = 0 } } )
                                  projection = perspective_projection view
                                  ray_collection = map projection (pixel_grid view width height)
                                  color_collection = map (raytrace 0) ray_collection

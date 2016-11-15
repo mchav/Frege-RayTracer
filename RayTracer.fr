@@ -121,7 +121,7 @@ checked_matt p = let xeven = even (truncate (p.x / 20.0))
 
 type Reflectivity = Double
 type Diffuseness = Double
-data Material = Material { col :: Color, ref :: Reflectivity, diff ::Diffuseness }
+data Material = Material { !col :: Color, !ref :: Reflectivity, !diff ::Diffuseness }
 
 
 ---------------------------------------------------------------------------------------
@@ -147,7 +147,7 @@ data Shape = Sphere Point3 Radius (Point3 -> Material)
 
 -- These intersection equations are taken from www.education.siggraph.org/materials/HyperGraph
 
-data Intersection = Intersection { norm :: Normal, pt :: Point3, ray :: Ray, mat :: Material }
+data Intersection = Intersection { !norm :: Normal, !pt :: Point3, !ray :: Ray, !mat :: Material }
 
 -- When we calculate reflected rays, they start on the surface of the shape.  Unfortunately,
 -- our limited numerical precision can make them be under the surface and so the reflected
@@ -189,7 +189,7 @@ data Light = Directional Vector3 Color
 
 -- If a  ray doesn't hit an object, what color should we use?
 background_color :: Color
-background_color = blue
+background_color = black
 
 -- What lights are in our scene?
 
@@ -204,8 +204,8 @@ ambient_light = Color { r = 0.1, g = 0.1, b = 0.1 }
 -- What Shapes are in our scene?
 shapes :: [Shape]
 shapes = [ Plane (normalize ( Vec3 { x = 0, y = (-1), z = 0 } ) ) 50 shinyred,
-     Sphere ( Vec3 { x = 50, y = 10, z = 100 } ) 40 semishinygreen,
-     Sphere ( Vec3 { x = -80, y = 0, z = 80 } ) 50 checked_matt ]
+     Sphere ( Vec3 { x = 50, y = 10, z = 100 } ) 60 semishinygreen,
+     Sphere ( Vec3 { x = -80, y = 0, z = 80 } ) 80 checked_matt ]
 
 ---------------------------------------------------------------------------------------
 -- Local lighting model
@@ -256,15 +256,15 @@ reflected_ray depth i
 -- Image output: We can write a ppm (Portable Pixmap) file by converting a list of
 -- colors (length is width * height) into a big string
 make_pgm :: Int -> Int -> [ Color ] -> String
-make_pgm width height xs = "P3\n" ++ show width ++ " " ++ show height ++ "\n255\n" ++ ( ST.run (stringify xs) )
+make_pgm width height xs = (ST.run (stringify width height xs))
 
 
 format :: Color -> String
 format c = show (round (c.r*255)) ++ " " ++ show (round (c.g * 255)) ++ " " ++ show (round (c.b*255)) ++ " "
 
-stringify [] = return ""
-stringify xs = do
-               sb <- StringBuilder.new ""
+stringify _ _ [] = return ""
+stringify w h xs = do
+               sb <- StringBuilder.new ("P3\n" ++ show w ++ " " ++ show h ++ "\n255\n")
                mapM_ (\t -> sb.append (format t)) xs
                sb.toString
 
@@ -277,7 +277,7 @@ stringify xs = do
 -- pixels on our virtual screen.
 
 -- Camera position, distance to screen, "Looking at" position, up vector
-data View = View { camerapos :: Point3, viewdist :: Double, lookingat :: Point3, viewup :: Vector3 }
+data View = View { !camerapos :: Point3, !viewdist :: Double, !lookingat :: Point3, !viewup :: Vector3 }
 
 pixel_grid :: View -> Double -> Double -> [ Point3 ]
 pixel_grid view width height =
